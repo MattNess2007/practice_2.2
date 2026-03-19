@@ -1,76 +1,90 @@
 import requests
 
 
-def github(username):
-    url = f"https://api.github.com{username}"
+def github(endpoint):
+    url = f"https://api.github.com{endpoint}"
     headers = {
         'User-Agent': 'Mozilla/5.0',
-        'Authorization': 'token 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'
     }
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=10)
         return response.json()
     except:
         print("Ошибка запроса")
         return None
 
 
-def user_comments(username):
+def user_comment(username):
 
     data = github(f"/search/issues?q=commenter:{username}")
-    return data.get('total_count', 0)
+    if data and isinstance(data, dict):
+        return data.get('total_count', 0)
+    return 0
 
 
-def user_profile(username):
+def user_info(username):
 
-    print(f"\nАккаунт {username}")
+    print(f"Профиль {username}")
     data = github(f"/users/{username}")
-    if data:
-        comments = user_comments(username)
-
+    if data and isinstance(data, dict) and 'login' in data:
+        comment = user_comment(username)
         print(f"Имя: {data.get('name', 'Не указано')}")
         print(f"Ссылка: {data.get('html_url')}")
         print(f"Репозитории: {data.get('public_repos')}")
-        print(f"Обсуждения (комментарии): {comments}")
+        print(f"Комментарии: {comment}")
         print(f"Подписчики: {data.get('followers')}")
         print(f"Подписки: {data.get('following')}")
 
 
 def user_reposit(username):
-    print(f"\nРепозитории {username}")
+
+    print(f"Репозитории {username}")
     data = github(f"/users/{username}/repos")
-    if data:
+
+    if isinstance(data, list):
+        if not data:
+            print("У пользователя нет публичных репозиториев")
+            return
+
         for inf in data:
-            print(f"\nНазвание: {inf['name']}")
-            print(f"Ссылка: {inf['html_url']}")
-            print(f"Язык: {inf.get('language', 'Не указан')}")
-            print(f"Видимость: {'Публичный' if not inf['private'] else 'Приватный'}")
-            print(f"Ветка по умолчанию: {inf.get('default_branch', 'Не указана')}")
-
-
-def search_reposit(comment):
-    print(f"\n--- Поиск: {comment} ---")
-    data = github(f"/search/repositories?q={comment}")
-    if data and 'items' in data and data['items']:
-        print(f"Найдено: {data['total_count']}")
-        for inf in data['items'][:7]:
-            print(f"\n{inf['full_name']}")
-            print(f"{inf['html_url']}")
+            if isinstance(inf, dict):
+                print(f"\nНазвание: {inf.get('name', 'Не указано')}")
+                print(f"Ссылка: {inf.get('html_url', 'Не указана')}")
+                print(f"Язык: {inf.get('language', 'Не указан')}")
+                print(f"Видимость: {'Публичный' if not inf.get('private', True) else 'Приватный'}")
+                print(f"Ветка: {inf.get('default_branch', 'Не указана')}")
+    elif isinstance(data, dict) and 'message' in data:
+        print(f"Ошибка API: {data.get('message')}")
     else:
-        print("Ничего не найдено")
+        print("Не удалось получить список репозиториев")
+
+
+def search_reposit(query):
+
+    print(f"Поиск: {query}")
+    data = github(f"/search/repositories?q={query}")
+
+    if isinstance(data, dict) and data.get('items'):
+        print(f"Найдено: {data['total_count']}")
+        for repo in data['items'][:5]:
+            if isinstance(repo, dict):
+                print(f"\n• {repo.get('full_name', 'Не указано')}")
+                print(f"  {repo.get('html_url', 'Не указана')}")
+    else:
+        print("Ничего не найдено или ошибка запроса")
 
 
 while True:
-    print("1 Профиль")
-    print("2 Репозитории")
-    print("3 Поиск")
-    print("4 Выход")
+    print("1 - Профиль")
+    print("2 - Репозитории")
+    print("3 - Поиск")
+    print("4 - Выход")
 
     choice = input("Выберите: ")
 
     if choice == "1":
         name = input("Имя пользователя: ").strip()
-        if name: user_profile(name)
+        if name: user_info(name)
     elif choice == "2":
         name = input("Имя пользователя: ").strip()
         if name: user_reposit(name)
