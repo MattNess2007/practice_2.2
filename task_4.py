@@ -7,7 +7,7 @@ def github(endpoint):
         'User-Agent': 'Mozilla/5.0',
     }
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers,)
         return response.json()
     except:
         print("Ошибка запроса")
